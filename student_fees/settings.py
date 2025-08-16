@@ -1,17 +1,18 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url   # 👈 added this
+ 
 load_dotenv()
  
 BASE_DIR = Path(__file__).resolve().parent.parent
  
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")  # 👈 safer for deployment
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
  
-# In production, set DEBUG to False
-DEBUG = False   # 👈 change this
+DEBUG = False   # 👈 production = False
  
-# Allow your Leapcell domain (you can put "*" for testing, but better to add exact domain later)
-ALLOWED_HOSTS = ["*"]   # e.g., ["yourapp.leapcell.app"]
+# Allow your Leapcell domain (or * for now)
+ALLOWED_HOSTS = ["*"]
  
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -25,10 +26,7 @@ INSTALLED_APPS = [
  
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
- 
-    # 👇 Add this for static file serving in production
-    'whitenoise.middleware.WhiteNoiseMiddleware',
- 
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # 👈 added for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -52,12 +50,15 @@ TEMPLATES = [{
  
 WSGI_APPLICATION = 'student_fees.wsgi.application'
  
+# -------- DATABASE (Postgres on Leapcell) -------- #
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3'
-    }
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True,   # force sslmode=require
+    )
 }
+# ------------------------------------------------- #
  
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Asia/Kolkata'
@@ -65,13 +66,7 @@ USE_TZ = False
  
 # ---------------- STATIC FILES ---------------- #
 STATIC_URL = '/static/'
- 
-# Where Django will collect static files
-STATIC_ROOT = BASE_DIR / "staticfiles"   # 👈 add this
- 
-# Keep your dev static folder too
+STATIC_ROOT = BASE_DIR / "staticfiles"   # where Django collects static files
 STATICFILES_DIRS = [BASE_DIR / "static"]
- 
-# Tell Django to use WhiteNoise for compressed static files
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # ------------------------------------------------ #
