@@ -118,7 +118,9 @@ def student_list(request):
     for item in data:
         key = f"{item['student'].total_due_months} Month(s)"
         groups.setdefault(key,[]).append(item)
-    ctx = {'groups': groups, 'join_from': join_from, 'join_to': join_to, 'q': q, 'today': date.today()}
+    total_students = len(qs)
+
+    ctx = {'groups': groups, 'join_from': join_from, 'join_to': join_to, 'q': q, 'today': date.today(),'total_students': total_students }
     return render(request,'fees/student_list.html',ctx)
 
 def student_add(request):
@@ -241,3 +243,5 @@ def update_student_dues(request, pk):
             due.paid = True if paid_value == 'true' else False
             due.save()
     return redirect('fees:student_edit', pk=pk)  # fixed
+
+
