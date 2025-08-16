@@ -1,11 +1,15 @@
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url   # 👈 added this
  
 load_dotenv()
+
+
  
 BASE_DIR = Path(__file__).resolve().parent.parent
+# load_dotenv(os.path.join(BASE_DIR, "student_fees_app_v6", ".env"))
  
 SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
  
@@ -13,7 +17,6 @@ DEBUG = False   # 👈 production = False
  
 # Allow your Leapcell domain (or * for now)
 ALLOWED_HOSTS = ["*"]
- 
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -50,12 +53,11 @@ TEMPLATES = [{
  
 WSGI_APPLICATION = 'student_fees.wsgi.application'
  
-# -------- DATABASE (Postgres on Leapcell) -------- #
+
+# DATABASES config
 DATABASES = {
     "default": dj_database_url.config(
-        default=os.environ.get("DATABASE_URL"),
-        conn_max_age=600,
-        ssl_require=True,   # force sslmode=require
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
     )
 }
 # ------------------------------------------------- #
