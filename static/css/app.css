@@ -1,0 +1,10 @@
+.due-card { width: 160px; background: #f8d7da;color: white; }
+.due-card.paid { background: #03854ad8; }
+.due-card.unpaid { background: #f03847; }
+.due-card .small { line-height: 1.1; }
+
+
+.navbar { min-height: 96px; align-items: center; }
+.navbar-brand img { display:block; height:auto; max-height:88px; } 
+
+

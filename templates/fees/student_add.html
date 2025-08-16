@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>Add Student</h3>
+<form method="post" id="studentForm">{% csrf_token %}
+<div class="row g-3">
+ <div class="col-md-4">{{ form.name.label_tag }} {{ form.name }}</div>
+ <div class="col-md-4">{{ form.mobile.label_tag }} {{ form.mobile }}</div>
+ <div class="col-md-4">{{ form.course.label_tag }} {{ form.course }}</div>
+ <div class="col-md-4">{{ form.registration_date.label_tag }} {{ form.registration_date }}</div>
+ <div class="col-md-4">{{ form.joining_date.label_tag }} {{ form.joining_date }}</div>
+ <div class="col-md-4">{{ form.registration_fee.label_tag }} {{ form.registration_fee }}</div>
+ <div class="col-md-4">{{ form.total_due_months.label_tag }} {{ form.total_due_months }}</div>
+</div>
+<hr>
+<h5>Monthly Dues</h5>
+<p class="text-muted">Enter amount for each month. Dates default from joining date (you can edit).</p>
+<div id="duesContainer" class="row g-2"></div>
+<div class="mt-3"><button class="btn btn-success">Save</button> <a class="btn btn-secondary" href="/">Cancel</a></div>
+</form>
+<script>
+function addMonths(base, months){const d=new Date(base);const day=d.getDate();d.setMonth(d.getMonth()+months+1,0);const last=d.getDate();d.setMonth(d.getMonth(),Math.min(day,last));return d}
+function fmtDate(d){const y=d.getFullYear();const m=('0'+(d.getMonth()+1)).slice(-2);const dd=('0'+d.getDate()).slice(-2);return `${y}-${m}-${dd}`}
+function rebuildDues(){const container=document.getElementById('duesContainer');container.innerHTML='';const total=parseInt(document.getElementById('id_total_due_months').value||'0');const join=document.getElementById('id_joining_date').value||new Date().toISOString().slice(0,10);for(let i=0;i<total;i++){const dueDate=fmtDate(addMonths(new Date(join),i));const col=document.createElement('div');col.className='col-md-4';col.innerHTML=`<div class="card p-2"><div class="small text-muted">Month ${i+1}</div><label class="form-label">Due Date</label><input type="date" name="due_date_${i}" value="${dueDate}" class="form-control"><label class="form-label mt-2">Amount (₹)</label><input type="number" step="0.01" name="due_amount_${i}" class="form-control" placeholder="0"></div>`;container.appendChild(col)}}
+document.getElementById('id_total_due_months').addEventListener('input',rebuildDues);document.getElementById('id_joining_date').addEventListener('change',rebuildDues);window.addEventListener('load',rebuildDues);
+</script>
+{% endblock %}

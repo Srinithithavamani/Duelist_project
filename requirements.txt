@@ -1,0 +1,14 @@
+
+Django==5.0.6
+python-dotenv
+requests
+ 
+# Needed for production server
+gunicorn
+ 
+# Needed for serving static files (CSS/JS/Bootstrap) in production
+whitenoise
+ 
+# (Optional, only if you switch from SQLite to Postgres later)
+dj-database-url
+psycopg2-binary
