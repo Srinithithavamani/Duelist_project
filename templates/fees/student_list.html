@@ -2,6 +2,7 @@
 {% block content %}
 
 <style>
+
 body{
   width: 100%;
   overflow-x: hidden;
@@ -11,7 +12,6 @@ body{
     max-width: 100%;
 }
 
-/* Freeze first column */
 .table th:first-child,
 .table td:first-child {
     position: sticky;
@@ -49,9 +49,19 @@ body{
     background: #f03847;
 }
 
+.due-card.warning {
+    background: #ffc107;  /* Yellow for overdue */
+    color: black;
+}
+
 .due-card .small {
     line-height: 1.1;
 }
+.due-card.today {
+    background: #fd7e14; /* Bootstrap orange */
+    color: white;
+}
+
 </style>
 
 <div class="d-flex justify-content-between mb-3">
@@ -74,7 +84,7 @@ body{
     <table class="table table-bordered align-middle">
       <thead class="table-light">
         <tr>
-          <th>S.No</th>  {# Serial Number Column Added #}
+          <th>S.No</th>
           <th>Name</th>
           <th>Mobile</th>
           <th>Registration</th>
@@ -88,7 +98,7 @@ body{
       <tbody>
         {% for it in items %}
           <tr>
-            <td>{{ forloop.counter }}</td>  {# Serial Number for each row #}
+            <td>{{ forloop.counter }}</td>
             <td>{{ it.student.name }}</td>
             <td>{{ it.student.mobile }}</td>
             <td>
@@ -104,10 +114,29 @@ body{
               <div class="monthly-dues-wrapper">
                 {% for d in it.dues %}
                   <a href="/toggle_due/{{ d.id }}/" class="text-decoration-none">
-                    <div class="p-2 border rounded due-card {% if d.paid %}paid{% else %}unpaid{% endif %}">
+                    <div class="p-2 border rounded due-card 
+                      {% if d.paid %}
+                          paid
+                      {% elif d.due_date == today %}
+                          today
+                      {% elif d.due_date < today %}
+                          warning
+                      {% else %}
+                          unpaid
+                      {% endif %}">
                       <div class="small">Month {{ forloop.counter }} - {{ d.due_date|date:'d M Y' }}</div>
                       <div class="fw-bold">₹{{ d.amount }}</div>
-                      <div class="small">{% if d.paid %}Paid{% else %}Unpaid{% endif %}</div>
+                      <div class="small">
+                        {% if d.paid %}
+                          Paid
+                        {% elif d.due_date == today %}
+                          Due Today
+                        {% elif d.due_date < today %}
+                          Overdue
+                        {% else %}
+                          Unpaid
+                        {% endif %}
+                      </div>
                     </div>
                   </a>
                 {% endfor %}
@@ -134,6 +163,6 @@ body{
   </div>
 {% endfor %}
 
-<p class="mt-3 fw-bold">Total Students: {{ total_students }}</p>  {# Show one overall count after all tables #}
+<p class="mt-3 fw-bold">Total Students: {{ total_students }}</p>
 
 {% endblock %}

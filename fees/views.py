@@ -85,7 +85,7 @@ def add_months(base_date, months):
     d = min(base_date.day, calendar.monthrange(y, m)[1])
     return date(y, m, d)
 
-def student_list(request):
+# def student_list(request):
     qs = Student.objects.all().order_by('-id')
     # filters
     join_from = request.GET.get('join_from','').strip()
@@ -123,6 +123,76 @@ def student_list(request):
     ctx = {'groups': groups, 'join_from': join_from, 'join_to': join_to, 'q': q, 'today': date.today(),'total_students': total_students }
     return render(request,'fees/student_list.html',ctx)
 
+from urllib.parse import quote_from_bytes
+
+def student_list(request):
+    qs = Student.objects.all().order_by('-id')
+    # filters
+    join_from = request.GET.get('join_from','').strip()
+    join_to = request.GET.get('join_to','').strip()
+    q = request.GET.get('q','').strip()
+    if join_from:
+        qs = qs.filter(joining_date__gte=join_from)
+    if join_to:
+        qs = qs.filter(joining_date__lte=join_to)
+    if q:
+        qs = qs.filter(name__icontains=q) | qs.filter(mobile__icontains=q)
+    data = []
+    today = date.today()
+    for s in qs:
+        dues = list(s.dues.all().order_by('due_date'))
+        dues_sorted = sorted(dues, key=lambda d: d.due_date)
+
+        completed = sum(1 for d in dues if d.paid)
+        total_paid = sum(float(d.amount) for d in dues if d.paid)
+        total_due = sum(float(d.amount) for d in dues if not d.paid)
+        oldest_unpaid = next((d for d in dues_sorted if not d.paid), None)
+        whatsapp_link = None
+        if oldest_unpaid:
+            msg = (
+        "\U00002728 Greetings from AITech Academy \U00002728\n\n"
+        f"\U0001F44B Hello *{s.name}*,\n\n"
+        "This is a gentle reminder from AITech Academy regarding your academy fees. "
+        f"Your payment for *{oldest_unpaid.due_date.strftime('%b %Y')}* is pending, "
+        f"with a due amount of *₹{oldest_unpaid.amount}* \U0001F4B0.\n\n"
+        f"The due date for this payment is *{oldest_unpaid.due_date.strftime('%d %b %Y')}*. "
+        "We kindly request you to clear the dues within this week \U000023F3\n\n"
+        "\U0001F64F Thank you for your cooperation.\n\n"
+        "Warm regards,\n"
+        "AITech Academy Team"
+    )
+
+            encoded = quote_from_bytes(msg.encode("utf-8"))
+    # put your country code (e.g., 91 for India) in front of the number
+            whatsapp_link = f"https://api.whatsapp.com/send?phone=91{s.mobile}&text={encoded}"
+
+        data.append({
+            'student': s,
+            'dues': dues_sorted,
+            'completed': completed,
+            'total': s.total_due_months,
+            'total_paid': total_paid,
+            'total_due': total_due,
+            'whatsapp_link': whatsapp_link
+        })
+    # group by duration
+    groups = {}
+    for item in data:
+        key = f"{item['student'].total_due_months} Month(s)"
+        groups.setdefault(key, []).append(item)
+    total_students = len(qs)
+
+    ctx = {
+        'groups': groups,
+        'join_from': join_from,
+        'join_to': join_to,
+        'q': q,
+        'today': date.today(),
+        'total_students': total_students
+    }
+    return render(request, 'fees/student_list.html', ctx)
+
+
 def student_add(request):
     if request.method=='POST':
         form = StudentForm(request.POST)
@@ -158,29 +228,6 @@ def toggle_due(request,due_id):
     return redirect('fees:student_list')
 
 
-# def student_edit(request, pk):
-#     s = get_object_or_404(Student, pk=pk)
-#     if request.method == 'POST':
-#         s.name = request.POST.get('name', s.name)
-#         s.mobile = request.POST.get('mobile', s.mobile)
-#         s.course = request.POST.get('course', s.course)
-#         s.registration_date = request.POST.get('registration_date', s.registration_date)
-#         s.joining_date = request.POST.get('joining_date', s.joining_date)
-#         s.registration_fee = request.POST.get('registration_fee', s.registration_fee)
-#         try:
-#             s.total_due_months = int(request.POST.get('total_due_months', s.total_due_months))
-#         except:
-#             pass
-#         s.save()
-#         update_dues_safely(s, request.POST)
-#         return redirect('fees:student_list')
-#     else:
-#         dues = list(s.dues.all().order_by('due_date'))
-#         return render(request, 'fees/student_edit.html', {
-#             'student': s,
-#             'dues': dues,
-#             'total_due_months': s.total_due_months
-#         })
 from datetime import datetime
 
 def student_edit(request, pk):
