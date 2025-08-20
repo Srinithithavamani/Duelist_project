@@ -124,6 +124,13 @@ def add_months(base_date, months):
     return render(request,'fees/student_list.html',ctx)
 
 from urllib.parse import quote_from_bytes
+def ordinal(n):
+    """Convert 1 -> 1st, 2 -> 2nd, 3 -> 3rd, etc."""
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
 
 def student_list(request):
     qs = Student.objects.all().order_by('-id')
@@ -149,11 +156,12 @@ def student_list(request):
         oldest_unpaid = next((d for d in dues_sorted if not d.paid), None)
         whatsapp_link = None
         if oldest_unpaid:
+            installment_number = dues_sorted.index(oldest_unpaid) + 1  # position in sorted list
             msg = (
         "\U00002728 Greetings from AITech Academy \U00002728\n\n"
         f"\U0001F44B Hello *{s.name}*,\n\n"
         "This is a gentle reminder from AITech Academy regarding your academy fees. "
-        f"Your payment for *{oldest_unpaid.due_date.strftime('%b %Y')}* is pending, "
+         f"Your payment for *{ordinal(installment_number)} Month Due* is pending, "
         f"with a due amount of *₹{oldest_unpaid.amount}* \U0001F4B0.\n\n"
         f"The due date for this payment is *{oldest_unpaid.due_date.strftime('%d %b %Y')}*. "
         "We kindly request you to clear the dues within this week \U000023F3\n\n"
