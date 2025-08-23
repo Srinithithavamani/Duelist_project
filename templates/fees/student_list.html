@@ -110,7 +110,7 @@ body{
               <div class="small text-muted">{{ it.student.course }} ({{ it.total }} mo)</div>
             </td>
 
-            <td class="monthly-dues-cell">
+            <!-- <td class="monthly-dues-cell">
               <div class="monthly-dues-wrapper">
                 {% for d in it.dues %}
                   <a href="/toggle_due/{{ d.id }}/" class="text-decoration-none">
@@ -141,7 +141,91 @@ body{
                   </a>
                 {% endfor %}
               </div>
-            </td>
+            </td> -->
+         <td class="monthly-dues-cell">
+  <div class="monthly-dues-wrapper">
+    {% for d in it.dues %}
+      <div class="p-2 border rounded due-card 
+        {% if d.paid %}
+            paid
+        {% elif d.due_date == today %}
+            today
+        {% elif d.due_date < today %}
+            warning
+        {% else %}
+            unpaid
+        {% endif %}">
+
+        <div class="small">Month {{ forloop.counter }} - {{ d.due_date|date:'d M Y' }}</div>
+        <div class="fw-bold">₹{{ d.amount }}</div>
+        <div class="small">
+          {% if d.paid %}
+             Paid 
+            {% if d.collected_by %}<br><span class="badge bg-light text-dark">By {{ d.collected_by }}</span>{% endif %}
+            {% if d.payment_method %}<br><span class="badge bg-light text-dark">{{ d.payment_method }}</span>{% endif %}
+            
+            <!-- Mark as Unpaid -->
+           <form method="post" action="{% url 'fees:toggle_due' d.id %}" class="mt-1">
+              {% csrf_token %}
+              <input type="hidden" name="mark_unpaid" value="1">
+              <button type="submit" class="btn btn-sm btn-outline-light">Mark as Unpaid</button>
+            </form>
+
+          {% else %}
+             Unpaid
+            <!-- Button to open modal -->
+            <button class="btn btn-sm btn-light mt-1" data-bs-toggle="modal" data-bs-target="#markPaidModal{{ d.id }}">
+              Mark as Paid
+            </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Modal for Mark as Paid -->
+      <div class="modal fade" id="markPaidModal{{ d.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form method="post" action="{% url 'fees:toggle_due' d.id %}" style="display:inline;">
+              {% csrf_token %}
+              <div class="modal-header">
+                <h5 class="modal-title">Mark Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <p><strong>Student:</strong> {{ it.student.name }}</p>
+                <p><strong>Due Date:</strong> {{ d.due_date|date:"d M Y" }}</p>
+                <p><strong>Amount:</strong> ₹{{ d.amount }}</p>
+
+                <div class="mb-3">
+                  <label>Collected By</label>
+                  <select name="collected_by" class="form-control" required>
+                    <option value="Sangamesh">Sangamesh</option>
+                    <option value="Sridhar">Sridhar</option>
+                    <option value="Binduja">Binduja</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label>Payment Method</label>
+                  <select name="payment_method" class="form-control" required>
+                    <option value="GPay">GPay</option>
+                    <option value="Cash">Cash</option>
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</td>
+
+
 
             <td>₹{{ it.total_paid|floatformat:2 }}</td>
             <td>₹{{ it.total_due|floatformat:2 }}</td>

@@ -85,43 +85,7 @@ def add_months(base_date, months):
     d = min(base_date.day, calendar.monthrange(y, m)[1])
     return date(y, m, d)
 
-# def student_list(request):
-    qs = Student.objects.all().order_by('-id')
-    # filters
-    join_from = request.GET.get('join_from','').strip()
-    join_to = request.GET.get('join_to','').strip()
-    q = request.GET.get('q','').strip()
-    if join_from:
-        qs = qs.filter(joining_date__gte=join_from)
-    if join_to:
-        qs = qs.filter(joining_date__lte=join_to)
-    if q:
-        qs = qs.filter(name__icontains=q) | qs.filter(mobile__icontains=q)
-    data = []
-    today = date.today()
-    for s in qs:
-        dues = list(s.dues.all().order_by('due_date'))
-        dues_sorted = sorted(dues, key=lambda d: d.due_date)
 
-        # dues_sorted = sorted(dues, key=lambda d: (d.paid, d.due_date))
-        completed = sum(1 for d in dues if d.paid)
-        total_paid = sum(float(d.amount) for d in dues if d.paid)
-        total_due = sum(float(d.amount) for d in dues if not d.paid)
-        oldest_unpaid = next((d for d in dues_sorted if not d.paid), None)
-        whatsapp_link = None
-        if oldest_unpaid:
-            msg = f"Hello {s.name}, your academy fee due is ₹{oldest_unpaid.amount} for {oldest_unpaid.due_date.strftime('%b %Y')}. Please pay."
-            whatsapp_link = f"https://wa.me/{s.mobile}?text={quote_plus(msg)}"
-        data.append({'student':s,'dues':dues_sorted,'completed':completed,'total':s.total_due_months,'total_paid':total_paid,'total_due':total_due,'whatsapp_link':whatsapp_link})
-    # group by duration
-    groups = {}
-    for item in data:
-        key = f"{item['student'].total_due_months} Month(s)"
-        groups.setdefault(key,[]).append(item)
-    total_students = len(qs)
-
-    ctx = {'groups': groups, 'join_from': join_from, 'join_to': join_to, 'q': q, 'today': date.today(),'total_students': total_students }
-    return render(request,'fees/student_list.html',ctx)
 
 from urllib.parse import quote_from_bytes
 def ordinal(n):
@@ -229,11 +193,32 @@ def toggle_reg_fee(request,pk):
     s.save()
     return redirect('fees:student_list')
 
-def toggle_due(request,due_id):
-    d = get_object_or_404(StudentDue,pk=due_id)
-    d.paid = not d.paid
-    d.save()
-    return redirect('fees:student_list')
+# def toggle_due(request,due_id):
+#     d = get_object_or_404(StudentDue,pk=due_id)
+#     d.paid = not d.paid
+#     d.save()
+#     return redirect('fees:student_list')
+
+
+
+
+def toggle_due(request, due_id):
+    d = get_object_or_404(StudentDue, pk=due_id)
+
+    if request.method == "POST":
+        if d.paid:
+            # 👇 Reset back to unpaid
+            d.paid = False
+            d.collected_by = None
+            d.payment_method = None
+        else:
+            # 👇 Mark as paid
+            d.paid = True
+            d.collected_by = request.POST.get("collected_by")
+            d.payment_method = request.POST.get("payment_method")
+
+        d.save()
+    return redirect("fees:student_list")
 
 
 from datetime import datetime
