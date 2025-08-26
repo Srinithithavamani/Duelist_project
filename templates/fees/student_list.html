@@ -61,6 +61,10 @@ body{
     background: #113F67 ; /* Bootstrap orange */
     color: white;
 }
+.due-card .badge {
+  font-size: 0.75rem;
+  vertical-align: middle;
+}
 
 </style>
 
@@ -161,9 +165,10 @@ body{
         <div class="small">
           {% if d.paid %}
              Paid 
-            {% if d.collected_by %}<br><span class="badge bg-light text-dark">By {{ d.collected_by }}</span>{% endif %}
-            {% if d.payment_method %}<br><span class="badge bg-light text-dark">{{ d.payment_method }}</span>{% endif %}
-            
+            <div class="d-inline-flex gap-1 ms-1">
+            {% if d.collected_by %}<span class="badge bg-light text-dark">By {{ d.collected_by }}</span>{% endif %}
+            {% if d.payment_method %}<span class="badge bg-light text-dark">{{ d.payment_method }}</span>{% endif %}
+          </div>
             <!-- Mark as Unpaid -->
            <form method="post" action="{% url 'fees:toggle_due' d.id %}" class="mt-1">
               {% csrf_token %}
@@ -199,9 +204,9 @@ body{
                 <div class="mb-3">
                   <label>Collected By</label>
                   <select name="collected_by" class="form-control" required>
-                    <option value="Sangamesh">Sangamesh</option>
-                    <option value="Sridhar">Sridhar</option>
-                    <option value="Binduja">Binduja</option>
+                    <option value="Sam">Sam</option>
+                    <option value="Sree">Sree</option>
+                    <option value="Bj">Bj</option>
                   </select>
                 </div>
 
