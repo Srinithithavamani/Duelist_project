@@ -254,4 +254,32 @@ body{
 
 <p class="mt-3 fw-bold">Total Students: {{ total_students }}</p>
 
+<script>
+// Preserve and restore scroll position for the student list page
+(function() {
+  const SCROLL_KEY = 'student_list_scroll_y';
+
+  // Restore on load (after layout is ready)
+  window.addEventListener('DOMContentLoaded', function() {
+    const saved = sessionStorage.getItem(SCROLL_KEY);
+    if (saved) {
+      // Delay slightly to let Bootstrap/layout finalize heights
+      setTimeout(function() {
+        window.scrollTo({ top: parseInt(saved, 10) || 0, left: 0, behavior: 'auto' });
+      }, 0);
+    }
+  });
+
+  // Save on navigation away / reload
+  window.addEventListener('beforeunload', function() {
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || window.pageYOffset || 0));
+  });
+
+  // Also save immediately when submitting any form in this page
+  document.addEventListener('submit', function(e) {
+    sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || window.pageYOffset || 0));
+  }, true);
+})();
+</script>
+
 {% endblock %}
