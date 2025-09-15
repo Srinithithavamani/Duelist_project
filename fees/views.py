@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseBadRequest
+from django.core.paginator import Paginator
+from django.db import transaction
+from django.db.models import Prefetch, Q
 from .models import Student, StudentDue, ActionLog
 from .forms import StudentForm
 from datetime import date
@@ -97,95 +100,137 @@ def ordinal(n):
     return f"{n}{suffix}"
 
 def student_list(request):
-    qs = Student.objects.all().order_by('-id')
+    # Base queryset with dues prefetched and ordered once
+    dues_qs = StudentDue.objects.order_by('due_date')
+    qs = (
+        Student.objects
+        .all()
+        .order_by('-id')
+        .prefetch_related(Prefetch('dues', queryset=dues_qs))
+    )
+
     # filters
-    join_from = request.GET.get('join_from','').strip()
-    join_to = request.GET.get('join_to','').strip()
-    q = request.GET.get('q','').strip()
+    join_from = (request.GET.get('join_from') or '').strip()
+    join_to = (request.GET.get('join_to') or '').strip()
+    search = (request.GET.get('q') or '').strip()
+
     if join_from:
         qs = qs.filter(joining_date__gte=join_from)
     if join_to:
         qs = qs.filter(joining_date__lte=join_to)
-    if q:
-        qs = qs.filter(name__icontains=q) | qs.filter(mobile__icontains=q)
+    if search:
+        qs = qs.filter(Q(name__icontains=search) | Q(mobile__icontains=search))
+
+    # Pagination (default 25 per page)
+    try:
+        per_page = int(request.GET.get('page_size') or 25)
+    except Exception:
+        per_page = 25
+    paginator = Paginator(qs, per_page)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     data = []
     today = date.today()
-    for s in qs:
-        dues = list(s.dues.all().order_by('due_date'))
-        dues_sorted = sorted(dues, key=lambda d: d.due_date)
+    for s in page_obj.object_list:
+        dues = list(s.dues.all())  # already ordered by due_date
 
         completed = sum(1 for d in dues if d.paid)
         total_paid = sum(float(d.amount) for d in dues if d.paid)
         total_due = sum(float(d.amount) for d in dues if not d.paid)
-        oldest_unpaid = next((d for d in dues_sorted if not d.paid), None)
+        oldest_unpaid = next((d for d in dues if not d.paid), None)
         whatsapp_link = None
         if oldest_unpaid:
-            installment_number = dues_sorted.index(oldest_unpaid) + 1  # position in sorted list
+            installment_number = dues.index(oldest_unpaid) + 1
             msg = (
-        "\U00002728 Greetings from AITech Academy \U00002728\n\n"
-        f"\U0001F44B Hello *{s.name}*,\n\n"
-        "This is a gentle reminder from AITech Academy regarding your academy fees. "
-         f"Your payment for *{ordinal(installment_number)} Month Due* is pending, "
-        f"with a due amount of *₹{oldest_unpaid.amount}* \U0001F4B0.\n\n"
-        f"The due date for this payment is *{oldest_unpaid.due_date.strftime('%d %b %Y')}*. "
-        "We kindly request you to clear the dues within this week \U000023F3\n\n"
-        "\U0001F64F Thank you for your cooperation.\n\n"
-        "Warm regards,\n"
-        "AITech Academy Team"
-    )
+                "\U00002728 Greetings from AITech Academy \U00002728\n\n"
+                f"\U0001F44B Hello *{s.name}*,\n\n"
+                "This is a gentle reminder from AITech Academy regarding your academy fees. "
+                f"Your payment for *{ordinal(installment_number)} Month Due* is pending, "
+                f"with a due amount of *₹{oldest_unpaid.amount}* \U0001F4B0.\n\n"
+                f"The due date for this payment is *{oldest_unpaid.due_date.strftime('%d %b %Y')}*. "
+                "We kindly request you to clear the dues within this week \U000023F3\n\n"
+                "\U0001F64F Thank you for your cooperation.\n\n"
+                "Warm regards,\n"
+                "AITech Academy Team"
+            )
 
             encoded = quote_from_bytes(msg.encode("utf-8"))
-    # put your country code (e.g., 91 for India) in front of the number
+            # put your country code (e.g., 91 for India) in front of the number
             whatsapp_link = f"https://api.whatsapp.com/send?phone=91{s.mobile}&text={encoded}"
 
         data.append({
             'student': s,
-            'dues': dues_sorted,
+            'dues': dues,
             'completed': completed,
             'total': s.total_due_months,
             'total_paid': total_paid,
             'total_due': total_due,
             'whatsapp_link': whatsapp_link
         })
-    # group by duration
+
+    # group by duration (on current page)
     groups = {}
     for item in data:
         key = f"{item['student'].total_due_months} Month(s)"
         groups.setdefault(key, []).append(item)
-    total_students = len(qs)
 
     ctx = {
         'groups': groups,
         'join_from': join_from,
         'join_to': join_to,
-        'q': q,
-        'today': date.today(),
-        'total_students': total_students
+        'q': search,
+        'today': today,
+        'total_students': qs.count(),
+        'page_obj': page_obj,
+        'paginator': paginator,
     }
     return render(request, 'fees/student_list.html', ctx)
 
 
 def student_add(request):
-    if request.method=='POST':
+    if request.method == 'POST':
         form = StudentForm(request.POST)
-        if form.is_valid():
-            s = form.save()
-            total = s.total_due_months
-            for i in range(total):
-                amt = float(request.POST.get(f'due_amount_{i}','0') or 0)
-                date_str = request.POST.get(f'due_date_{i}','').strip()
-                if date_str:
-                    y,m,d = map(int,date_str.split('-'))
-                    due_dt = date(y,m,d)
-                else:
-                    due_dt = add_months(s.joining_date,i)
-                StudentDue.objects.create(student=s,due_date=due_dt,amount=amt)
-            ActionLog.objects.create(action='add_student',payload=str(s.id))
-            return redirect('fees:student_list')
-        return HttpResponseBadRequest('Invalid')
+        if not form.is_valid():
+            return HttpResponseBadRequest('Invalid')
+
+        try:
+            with transaction.atomic():
+                s = form.save()
+                total = max(0, int(s.total_due_months or 0))
+                for i in range(total):
+                    raw_amt = (request.POST.get(f'due_amount_{i}') or '').strip()
+                    from decimal import Decimal, InvalidOperation
+                    try:
+                        amt = Decimal(raw_amt) if raw_amt else Decimal('0')
+                    except (InvalidOperation, Exception):
+                        amt = Decimal('0')
+
+                    date_str = (request.POST.get(f'due_date_{i}') or '').strip()
+                    if date_str:
+                        try:
+                            y, m, d = map(int, date_str.split('-'))
+                            due_dt = date(y, m, d)
+                        except Exception:
+                            due_dt = add_months(s.joining_date, i)
+                    else:
+                        due_dt = add_months(s.joining_date, i)
+
+                    StudentDue.objects.create(student=s, due_date=due_dt, amount=amt)
+
+                ActionLog.objects.create(action='add_student', payload=str(s.id))
+        except Exception as e:
+            # Persist error for debugging and surface message
+            try:
+                ActionLog.objects.create(action='error_add_student', payload=str(e))
+            except Exception:
+                pass
+            return HttpResponseBadRequest(f'Could not save student: {e}')
+
+        return redirect('fees:student_list')
     else:
-        form = StudentForm(initial={'registration_date':date.today(),'joining_date':date.today()})
-    return render(request,'fees/student_add.html',{'form':form})
+        form = StudentForm(initial={'registration_date': date.today(), 'joining_date': date.today()})
+    return render(request, 'fees/student_add.html', {'form': form})
 
 def toggle_reg_fee(request,pk):
     s = get_object_or_404(Student,pk=pk)

@@ -28,6 +28,7 @@ class StudentDue(models.Model):
     due_date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid = models.BooleanField(default=False)
+    last_updated = models.DateTimeField(auto_now=True)
 
     # NEW FIELDS
     collected_by = models.CharField(
