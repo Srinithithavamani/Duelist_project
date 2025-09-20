@@ -82,8 +82,8 @@ body{
   </div>
 </div>
 
-{% for group, items in groups.items %}
-  <h5 class="mt-3">{{ group }}</h5>
+{% for gp in grouped_pages %}
+  <h5 class="mt-3">{{ gp.label }}</h5>
   <div class="table-responsive">
     <table class="table table-bordered align-middle">
       <thead class="table-light">
@@ -100,7 +100,7 @@ body{
         </tr>
       </thead>
       <tbody>
-        {% for it in items %}
+        {% for it in gp.page_obj.object_list %}
           <tr>
             <td>{{ forloop.counter }}</td>
             <td>{{ it.student.name }}</td>
@@ -250,7 +250,22 @@ body{
       </tbody>
     </table>
   </div>
+  {% if gp.paginator.num_pages > 1 %}
+  <nav aria-label="Group pagination" class="mt-1">
+    <ul class="pagination pagination-sm mb-0">
+      {% for num in gp.paginator.page_range %}
+        {% if num >= gp.page_obj.number|add:'-2' and num <= gp.page_obj.number|add:'2' %}
+          <li class="page-item {% if gp.page_obj.number == num %}active{% endif %}">
+            <a class="page-link" href="?gp_{{ gp.months }}={{ num }}{% if join_from %}&join_from={{ join_from }}{% endif %}{% if join_to %}&join_to={{ join_to }}{% endif %}{% if q %}&q={{ q }}{% endif %}{% if group_page_size %}&group_page_size={{ group_page_size }}{% endif %}">{{ num }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
 {% endfor %}
+
+{# Global pagination removed as requested; per-group pagination only #}
 
 <p class="mt-3 fw-bold">Total Students: {{ total_students }}</p>
 

@@ -121,18 +121,10 @@ def student_list(request):
     if search:
         qs = qs.filter(Q(name__icontains=search) | Q(mobile__icontains=search))
 
-    # Pagination (default 25 per page)
-    try:
-        per_page = int(request.GET.get('page_size') or 25)
-    except Exception:
-        per_page = 25
-    paginator = Paginator(qs, per_page)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
+    # Build data for all filtered students (no global pagination)
     data = []
     today = date.today()
-    for s in page_obj.object_list:
+    for s in qs:
         dues = list(s.dues.all())  # already ordered by due_date
 
         completed = sum(1 for d in dues if d.paid)
@@ -169,21 +161,37 @@ def student_list(request):
             'whatsapp_link': whatsapp_link
         })
 
-    # group by duration (on current page)
-    groups = {}
+    # group by duration (on current page) and paginate within each group
+    groups_by_months = {}
     for item in data:
-        key = f"{item['student'].total_due_months} Month(s)"
-        groups.setdefault(key, []).append(item)
+        months = item['student'].total_due_months
+        groups_by_months.setdefault(months, []).append(item)
+
+    try:
+        group_page_size = int(request.GET.get('group_page_size') or 10)
+    except Exception:
+        group_page_size = 10
+
+    grouped_pages = []
+    for months, items in sorted(groups_by_months.items()):
+        group_paginator = Paginator(items, group_page_size)
+        page_param = request.GET.get(f'gp_{months}')
+        group_page_obj = group_paginator.get_page(page_param)
+        grouped_pages.append({
+            'months': months,
+            'label': f"{months} Month(s)",
+            'page_obj': group_page_obj,
+            'paginator': group_paginator,
+        })
 
     ctx = {
-        'groups': groups,
+        'grouped_pages': grouped_pages,
         'join_from': join_from,
         'join_to': join_to,
         'q': search,
         'today': today,
         'total_students': qs.count(),
-        'page_obj': page_obj,
-        'paginator': paginator,
+        'group_page_size': group_page_size,
     }
     return render(request, 'fees/student_list.html', ctx)
 
