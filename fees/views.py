@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import HttpResponseBadRequest
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -244,6 +245,9 @@ def toggle_reg_fee(request,pk):
     s = get_object_or_404(Student,pk=pk)
     s.registration_fee_paid = not s.registration_fee_paid
     s.save()
+    next_qs = (request.GET.get('next') or '').strip()
+    if next_qs:
+        return redirect(f"{reverse('fees:student_list')}?{next_qs}")
     return redirect('fees:student_list')
 
 # def toggle_due(request,due_id):
@@ -271,6 +275,9 @@ def toggle_due(request, due_id):
             d.payment_method = request.POST.get("payment_method")
 
         d.save()
+    next_qs = (request.POST.get('next') or '').strip()
+    if next_qs:
+        return redirect(f"{reverse('fees:student_list')}?{next_qs}")
     return redirect("fees:student_list")
 
 
@@ -300,6 +307,9 @@ def student_edit(request, pk):
 
         s.save()
         update_dues_safely(s, request.POST)
+        next_qs = (request.POST.get('next') or '').strip()
+        if next_qs:
+            return redirect(f"{reverse('fees:student_list')}?{next_qs}")
         return redirect('fees:student_list')
 
     else:
@@ -313,6 +323,9 @@ def student_edit(request, pk):
 def student_delete(request, pk):
     s = get_object_or_404(Student, pk=pk)
     s.delete()
+    next_qs = (request.GET.get('next') or '').strip()
+    if next_qs:
+        return redirect(f"{reverse('fees:student_list')}?{next_qs}")
     return redirect('fees:student_list')
     
 def update_student_info(request, pk):

@@ -108,7 +108,7 @@ body{
             <td>
               {{ it.student.registration_date|date:'d M Y' }}<br>
               ₹{{ it.student.registration_fee }}
-              <a class="btn btn-sm btn-outline-secondary ms-1" href="/toggle_reg_fee/{{ it.student.id }}/">
+      <a class="btn btn-sm btn-outline-secondary ms-1" href="/toggle_reg_fee/{{ it.student.id }}/?next={{ request.GET.urlencode|urlencode }}">
                 {% if it.student.registration_fee_paid %}Paid{% else %}Unpaid{% endif %}
               </a>
               <div class="small text-muted">{{ it.student.course }} ({{ it.total }} mo)</div>
@@ -173,6 +173,7 @@ body{
            <form method="post" action="{% url 'fees:toggle_due' d.id %}" class="mt-1">
               {% csrf_token %}
               <input type="hidden" name="mark_unpaid" value="1">
+              <input type="hidden" name="next" value="{{ request.GET.urlencode }}">
               <button type="submit" class="btn btn-sm btn-outline-light">Mark as Unpaid</button>
             </form>
 
@@ -192,6 +193,7 @@ body{
           <div class="modal-content">
             <form method="post" action="{% url 'fees:toggle_due' d.id %}" style="display:inline;">
               {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.GET.urlencode }}">
               <div class="modal-header">
                 <h5 class="modal-title">Mark Payment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -242,8 +244,8 @@ body{
               {% endif %}
             </td>
             <td>
-              <a class="btn btn-sm btn-outline-primary" href="/edit/{{ it.student.id }}/">Edit</a>
-              <a class="btn btn-sm btn-outline-danger" href="/delete/{{ it.student.id }}/" onclick="return confirm('Delete?')">Delete</a>
+              <a class="btn btn-sm btn-outline-primary" href="/edit/{{ it.student.id }}/?next={{ request.GET.urlencode|urlencode }}">Edit</a>
+              <a class="btn btn-sm btn-outline-danger" href="/delete/{{ it.student.id }}/?next={{ request.GET.urlencode|urlencode }}" onclick="return confirm('Delete?')">Delete</a>
             </td>
           </tr>
         {% endfor %}
